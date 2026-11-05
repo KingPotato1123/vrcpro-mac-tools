@@ -1,0 +1,316 @@
+diff --git a/dlls/wbemprox/builtin.c b/dlls/wbemprox/builtin.c
+--- a/dlls/wbemprox/builtin.c
++++ b/dlls/wbemprox/builtin.c
+@@ -87,7 +87,7 @@
+ };
+ static const struct column col_cdromdrive[] =
+ {
+-    { L"DeviceId",    CIM_STRING|COL_FLAG_KEY },
++    { L"DeviceID",    CIM_STRING|COL_FLAG_KEY },
+     { L"Drive",       CIM_STRING|COL_FLAG_DYNAMIC },
+     { L"MediaType",   CIM_STRING },
+     { L"Name",        CIM_STRING },
+@@ -134,7 +134,8 @@
+ };
+ static const struct column col_diskdrive[] =
+ {
+-    { L"DeviceId",      CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++    { L"Caption",       CIM_STRING },
++    { L"DeviceID",      CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
+     { L"Index",         CIM_UINT32 },
+     { L"InterfaceType", CIM_STRING },
+     { L"Manufacturer",  CIM_STRING },
+@@ -153,7 +154,7 @@
+ {
+     { L"Bootable",       CIM_BOOLEAN },
+     { L"BootPartition",  CIM_BOOLEAN },
+-    { L"DeviceId",       CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++    { L"DeviceID",       CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
+     { L"DiskIndex",      CIM_UINT32 },
+     { L"Index",          CIM_UINT32 },
+     { L"PNPDeviceID",    CIM_STRING|COL_FLAG_DYNAMIC },
+@@ -178,7 +179,7 @@
+ static const struct column col_logicaldisk[] =
+ {
+     { L"Caption",            CIM_STRING|COL_FLAG_DYNAMIC },
+-    { L"DeviceId",           CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++    { L"DeviceID",           CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
+     { L"DriveType",          CIM_UINT32 },
+     { L"FileSystem",         CIM_STRING|COL_FLAG_DYNAMIC },
+     { L"FreeSpace",          CIM_UINT64 },
+@@ -197,14 +198,14 @@
+     { L"AdapterType",         CIM_STRING },
+     { L"AdapterTypeID",       CIM_UINT16 },
+     { L"Description",         CIM_STRING|COL_FLAG_DYNAMIC },
+-    { L"DeviceId",            CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++    { L"DeviceID",            CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
+     { L"GUID",                CIM_STRING|COL_FLAG_DYNAMIC },
+     { L"Index",               CIM_UINT32 },
+     { L"InterfaceIndex",      CIM_UINT32 },
+     { L"MACAddress",          CIM_STRING|COL_FLAG_DYNAMIC },
+     { L"Manufacturer",        CIM_STRING },
+     { L"Name",                CIM_STRING|COL_FLAG_DYNAMIC },
+-    { L"NetConnectionID",     CIM_STRING },
++    { L"NetConnectionID",     CIM_STRING|COL_FLAG_DYNAMIC },
+     { L"NetConnectionStatus", CIM_UINT16 },
+     { L"NetEnabled",          CIM_BOOLEAN },
+     { L"PhysicalAdapter",     CIM_BOOLEAN },
+@@ -298,16 +299,21 @@
+     { L"PartNumber",           CIM_STRING },
+     { L"SerialNumber",         CIM_STRING },
+ };
++static const struct column col_pnpdevice[] =
++{
++    { L"SameElement",   CIM_REFERENCE|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++    { L"SystemElement", CIM_REFERENCE|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++};
+ static const struct column col_pnpentity[] =
+ {
+-    { L"DeviceId",             CIM_STRING|COL_FLAG_DYNAMIC },
++    { L"DeviceID",             CIM_STRING|COL_FLAG_DYNAMIC },
+     { L"Manufacturer",         CIM_STRING },
+     { L"Name",                 CIM_STRING },
+ };
+ static const struct column col_printer[] =
+ {
+     { L"Attributes",           CIM_UINT32 },
+-    { L"DeviceId",             CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++    { L"DeviceID",             CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
+     { L"DriverName",           CIM_STRING|COL_FLAG_DYNAMIC },
+     { L"HorizontalResolution", CIM_UINT32 },
+     { L"Local",                CIM_BOOLEAN },
+@@ -340,7 +346,7 @@
+     { L"CurrentClockSpeed",         CIM_UINT32 },
+     { L"DataWidth",                 CIM_UINT16 },
+     { L"Description",               CIM_STRING|COL_FLAG_DYNAMIC },
+-    { L"DeviceId",                  CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++    { L"DeviceID",                  CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
+     { L"Family",                    CIM_UINT16 },
+     { L"Level",                     CIM_UINT16 },
+     { L"Manufacturer",              CIM_STRING|COL_FLAG_DYNAMIC },
+@@ -472,7 +478,7 @@
+     { L"CurrentScanMode",             CIM_UINT16 },
+     { L"CurrentVerticalResolution",   CIM_UINT32 },
+     { L"Description",                 CIM_STRING|COL_FLAG_DYNAMIC },
+-    { L"DeviceId",                    CIM_STRING|COL_FLAG_KEY },
++    { L"DeviceID",                    CIM_STRING|COL_FLAG_KEY },
+     { L"DriverDate",                  CIM_DATETIME },
+     { L"DriverVersion",               CIM_STRING },
+     { L"InstalledDisplayDrivers",     CIM_STRING },
+@@ -487,7 +493,7 @@
+ 
+ static const struct column col_volume[] =
+ {
+-    { L"DeviceId",      CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
++    { L"DeviceID",      CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
+     { L"DriveLetter",   CIM_STRING|COL_FLAG_DYNAMIC },
+ };
+ 
+@@ -587,6 +593,7 @@
+ };
+ struct record_diskdrive
+ {
++    const WCHAR *caption;
+     const WCHAR *device_id;
+     UINT32       index;
+     const WCHAR *interfacetype;
+@@ -751,6 +758,11 @@
+     const WCHAR *partnumber;
+     const WCHAR *serial;
+ };
++struct record_pnpdevice
++{
++    const WCHAR *sameelement;
++    const WCHAR *systemelement;
++};
+ struct record_pnpentity
+ {
+     const WCHAR *device_id;
+@@ -2341,6 +2353,7 @@
+ 
+             rec = (struct record_diskdrive *)(table->data + offset);
+             swprintf( device_id, ARRAY_SIZE( device_id ), fmtW, index );
++            rec->caption       = L"Wine Disk Drive"; /* Windows: same as Model */
+             rec->device_id     = wcsdup( device_id );
+             rec->index         = index++;
+             rec->interfacetype = L"IDE";
+@@ -2880,7 +2893,11 @@
+         rec->interface_index      = aa->IfIndex;
+         rec->mac_address          = get_mac_address( aa->PhysicalAddress, aa->PhysicalAddressLength );
+         rec->manufacturer         = L"The Wine Project";
+-        rec->netconnection_id     = NULL; /* FIXME Windows seems to fill this when it's connected and in use */
++        /* Windows fills NetConnectionID (e.g. "Ethernet") for physical adapters;
++         * VRC Pro filters adapters with NetConnectionID LIKE "%" to build its hardware ID.
++         * Only macOS hardware ports (en*) get one: awdl/llw/ap/nan/bridge MACs change at runtime. */
++        rec->netconnection_id     = (physical && aa->FriendlyName && !wcsncmp( aa->FriendlyName, L"en", 2 ))
++                                    ? wcsdup( aa->FriendlyName ) : NULL;
+         rec->name                 = wcsdup( aa->FriendlyName );
+         rec->netenabled           = connection_status ? -1 : 0;
+         rec->netconnection_status = connection_status;
+@@ -3149,6 +3166,92 @@
+     return status;
+ }
+ 
++/* Win32_PnPDevice: associates each Win32_DiskDrive with the Win32_PnPEntity of the same
++ * PNPDeviceID. VRC Pro walks LogicalDisk -> Partition -> DiskDrive -> PnPDevice to build
++ * its hardware ID and aborts login when this class is empty. */
++static enum fill_status fill_pnpdevice( struct table *table, const struct expr *cond )
++{
++    struct record_pnpdevice *rec;
++    struct query *query;
++    UINT i, row = 0, offset = 0;
++    enum fill_status status = FILL_STATUS_UNFILTERED;
++    VARIANT path, pnpid;
++    const WCHAR *colon;
++    WCHAR *system;
++    size_t len;
++
++    if (!(query = create_query( WBEMPROX_NAMESPACE_CIMV2 ))) return FILL_STATUS_FAILED;
++    if (parse_query( WBEMPROX_NAMESPACE_CIMV2, L"SELECT * FROM Win32_DiskDrive", &query->view, &query->mem ) != S_OK ||
++        execute_view( query->view ) != S_OK)
++    {
++        free_query( query );
++        return FILL_STATUS_FAILED;
++    }
++    if (!resize_table( table, query->view->result_count, sizeof(*rec) ))
++    {
++        free_query( query );
++        return FILL_STATUS_FAILED;
++    }
++
++    for (i = 0; i < query->view->result_count; i++)
++    {
++        VariantInit( &path );
++        VariantInit( &pnpid );
++        if (get_propval( query->view, i, L"__PATH", &path, NULL, NULL ) != S_OK ||
++            get_propval( query->view, i, L"PNPDeviceID", &pnpid, NULL, NULL ) != S_OK ||
++            V_VT(&path) != VT_BSTR || V_VT(&pnpid) != VT_BSTR ||
++            !(colon = wcschr( V_BSTR(&path), ':' )))
++        {
++            VariantClear( &path );
++            VariantClear( &pnpid );
++            continue;
++        }
++
++        /* "\\HOST\ROOT\CIMV2:" + "Win32_PnPEntity.DeviceID=\"" + id + "\"", with backslashes
++         * in the id escaped like __PATH does for key values */
++        len = (colon - V_BSTR(&path) + 1) + wcslen( L"Win32_PnPEntity.DeviceID=\"\"" ) + 2 * wcslen( V_BSTR(&pnpid) ) + 1;
++        if (!(system = malloc( len * sizeof(WCHAR) )))
++        {
++            VariantClear( &path );
++            VariantClear( &pnpid );
++            break;
++        }
++        {
++            const WCHAR *s;
++            WCHAR *d;
++            int n = swprintf( system, len, L"%.*sWin32_PnPEntity.DeviceID=\"",
++                              (int)(colon - V_BSTR(&path) + 1), V_BSTR(&path) );
++            d = system + n;
++            for (s = V_BSTR(&pnpid); *s; s++)
++            {
++                if (*s == '\\') *d++ = '\\';
++                *d++ = *s;
++            }
++            *d++ = '\"';
++            *d = 0;
++        }
++
++        rec = (struct record_pnpdevice *)(table->data + offset);
++        rec->sameelement   = wcsdup( V_BSTR(&path) );
++        rec->systemelement = system;
++        VariantClear( &path );
++        VariantClear( &pnpid );
++
++        if (!match_row( table, row, cond, &status ))
++        {
++            free_row_values( table, row );
++            continue;
++        }
++        offset += sizeof(*rec);
++        row++;
++    }
++    free_query( query );
++
++    TRACE("created %u rows\n", row);
++    table->num_rows = row;
++    return status;
++}
++
+ static enum fill_status fill_pnpentity( struct table *table, const struct expr *cond )
+ {
+     struct record_pnpentity *rec;
+@@ -4341,6 +4444,7 @@
+     { L"Win32_PageFileUsage", C(col_pagefileusage), D(data_pagefileusage) },
+     { L"Win32_PhysicalMedia", C(col_physicalmedia), D(data_physicalmedia) },
+     { L"Win32_PhysicalMemory", C(col_physicalmemory), 0, 0, NULL, fill_physicalmemory },
++    { L"Win32_PnPDevice", C(col_pnpdevice), 0, 0, NULL, fill_pnpdevice },
+     { L"Win32_PnPEntity", C(col_pnpentity), 0, 0, NULL, fill_pnpentity },
+     { L"Win32_Printer", C(col_printer), 0, 0, NULL, fill_printer },
+     { L"Win32_Process", C(col_process), 0, 0, NULL, fill_process },
+diff --git a/dlls/wbemprox/query.c b/dlls/wbemprox/query.c
+--- a/dlls/wbemprox/query.c
++++ b/dlls/wbemprox/query.c
+@@ -501,11 +501,26 @@
+ static WCHAR *build_antecedent_query( const WCHAR *assocclass, const WCHAR *dependent )
+ {
+     static const WCHAR fmtW[] = L"SELECT Antecedent FROM %s WHERE Dependent='%s'";
+-    UINT len = lstrlenW(assocclass) + lstrlenW(dependent) + ARRAY_SIZE(fmtW);
+-    WCHAR *ret;
++    UINT len = lstrlenW(assocclass) + 2 * lstrlenW(dependent) + ARRAY_SIZE(fmtW);
++    WCHAR *ret, *escaped, *d;
++    const WCHAR *s;
+ 
+-    if (!(ret = malloc( len * sizeof(WCHAR) ))) return NULL;
+-    swprintf( ret, len, fmtW, assocclass, dependent );
++    /* WQL string literals are backslash-escaped, so escape the path before embedding it */
++    if (!(escaped = malloc( (2 * lstrlenW(dependent) + 1) * sizeof(WCHAR) ))) return NULL;
++    for (s = dependent, d = escaped; *s; s++)
++    {
++        if (*s == '\\' || *s == '\'') *d++ = '\\';
++        *d++ = *s;
++    }
++    *d = 0;
++
++    if (!(ret = malloc( len * sizeof(WCHAR) )))
++    {
++        free( escaped );
++        return NULL;
++    }
++    swprintf( ret, len, fmtW, assocclass, escaped );
++    free( escaped );
+     return ret;
+ }
+ 
+Common subdirectories: wine-9.0/dlls/wbemprox/tests and wine-9.0/dlls/wbemprox/tests
+diff --git a/dlls/wbemprox/wql.y b/dlls/wbemprox/wql.y
+--- a/dlls/wbemprox/wql.y
++++ b/dlls/wbemprox/wql.y
+@@ -93,8 +93,17 @@
+         len -= 2;
+     }
+     if (!(ret = alloc_mem( parser, (len + 1) * sizeof(WCHAR) ))) return NULL;
+-    memcpy( ret, p, len * sizeof(WCHAR) );
+-    ret[len] = 0;
++    {
++        /* WQL string literals use backslash escapes like Windows (e.g. "IDE\\DISK\\..."),
++         * so "\\" becomes "\" and "\"" becomes a quote. */
++        int i, j = 0;
++        for (i = 0; i < len; i++)
++        {
++            if (p[i] == '\\' && i + 1 < len) i++;
++            ret[j++] = p[i];
++        }
++        ret[j] = 0;
++    }
+     return ret;
+ }
+ 
+@@ -789,6 +798,7 @@
+     case '\'':
+         for (i = 1; s[i]; i++)
+         {
++            if (s[i] == '\\' && s[i + 1]) { i++; continue; }
+             if (s[i] == s[0]) break;
+         }
+         if (s[i]) i++;
